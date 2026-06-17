@@ -79,6 +79,18 @@ CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_bind-host=y
 EOF
 
+          # Add conninfra APSOC config for MT7986
+          cat >> .config << 'EOF'
+CONFIG_MTK_CONNINFRA_APSOC=y
+CONFIG_MTK_CONNINFRA_APSOC_MT7986=y
+EOF
+
+          # Fix conninfra #ifdef guard to match Makefile Kconfig names
+          sed -i 's/CONNINFRA_APSOC_MT7986/CONFIG_MTK_CONNINFRA_APSOC_MT7986/g' \
+            package/mtk/drivers/conninfra/src/platform/consys_hw_plat_data.c
+          sed -i 's/CONNINFRA_APSOC_MT7981/CONFIG_MTK_CONNINFRA_APSOC_MT7981/g' \
+            package/mtk/drivers/conninfra/src/platform/consys_hw_plat_data.c
+
           # Change default IP
           sed -i 's/192.168.6.1/192.168.2.1/g' package/base-files/files/bin/config_generate
 
