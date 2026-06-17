@@ -12,11 +12,11 @@ The correct repo already has these critical fixes:
 ## Build Method
 1. Start from `defconfig/mt7975-ipailna-high-power.config` as the base (official high-power config for MT7975 iPAiLNA)
 2. Change device to N60 Pro, and ONLY the device — do NOT manually add/remove individual MTK config options
-3. Remove bloat packages (ssr-plus, passwall, python, node, etc.)
+3. Remove bloat packages (ssr-plus, passwall, vssr, rclone, python, node, etc.)
 4. Fix dnsmasq: replace `dnsmasq-full` with basic `dnsmasq` (dnsmasq-full fails to link against libnettle)
 5. Add DDNS: `luci-app-ddns`, `ddns-scripts`, `ddns-scripts-services`, `curl`, `libcurl`, `bind-host`, `bind-libs`, `bind-dig`
 6. Change default IP to `192.168.2.1`
-7. Run `make defconfig`, then strip any remaining dnsmasq-full entries, then `make -j$(nproc)`
+7. Run `make defconfig`, then strip remaining dnsmasq-full entries, then `make -j$(nproc)`
 
 ## Critical Config Rules
 - `CONFIG_MTK_MT_WIFI=m` (not `=y`) — must be module for external kernel module build
@@ -56,8 +56,10 @@ When stripping bloat from `mt7975-ipailna-high-power.config`:
 - Remove `ssr-plus`, `passwall`, `vssr`, `rclone` families
 - Remove `python*`, `node*` packages (heavy, only needed by above)
 - Remove `nginx`, `luci-nginx`, `uwsgi` if not needed (quickfile runs standalone)
+- Remove `luci-app-ttyd`, `luci-theme-argon`, `openssh-*`, `openssl-util`, `tcpdump`, `wireless-tools`, `zram-swap`, `htop`, `nano`, `ipset`, `ebtables`, `kmod-ipt-offload`, `kmod-leds-ws2812b`, `kmod-tun`, `kmod-zram`, `luci-app-eqos-mtk`, `luci-app-wrtbwmon`, `luci-i18n-*` for removed apps
 - Keep `luci-app-turboacc-mtk` and MTK tools (hardware acceleration)
 - After removing, check `.config` has no remaining `=y` for these — also strip `# CONFIG...is not set` lines
+- **Order matters**: `make defconfig` re-adds defaults (dnsmasq-full). Strip AFTER defconfig, before `make
 
 ## Deployment
 - Uboot web at `192.168.1.1` (hold reset + power on)
@@ -68,6 +70,6 @@ When stripping bloat from `mt7975-ipailna-high-power.config`:
 Before flashing, verify:
 - `BOARD=netcore_n60-pro` in image strings
 - `supported_devices` includes `netcore,n60-pro`
-- Size fits within 128MB flash (26MB is fine)
+- Size fits within 128MB flash (19MB slim / 26MB quickfile / 32MB full)
 - Key packages present: `kmod-mt_wifi`, `kmod-warp`, `kmod-mediatek_hnat`, `dnsmasq`, `ddns-scripts`
 - Bloat absent: no ssr-plus, passwall, python, node, nginx
