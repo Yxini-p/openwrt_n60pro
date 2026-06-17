@@ -27,6 +27,14 @@ jobs:
           sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
           sudo pip3 install pyelftools
 
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+
       - name: Clone source
         run: |
           git clone -b openwrt-24.10-6.6 --single-branch --depth=1 \
@@ -60,6 +68,11 @@ jobs:
       - name: Build firmware
         run: |
           cd openwrt
+          export CCACHE_DIR=~/.ccache
+          export CCACHE_COMPRESS=1
+          export CCACHE_COMPRESSLEVEL=3
+          export CCACHE_MAXSIZE=2G
+          export USE_CCACHE=1
           make -j$(nproc) || make -j1 V=s
         timeout-minutes: 360
 
