@@ -3,7 +3,7 @@ name: Build N60 Pro Firmware
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   build:
