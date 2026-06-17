@@ -52,28 +52,29 @@ jobs:
           cp defconfig/mt7975-ipailna-high-power.config .config
 
           sed -i "/CONFIG_TARGET_DEVICE_/d" .config
-          cat >> .config << 'EOF'
-CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_netcore_n60-pro=y
-CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_netcore_n60-pro=""
-EOF
+          echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_netcore_n60-pro=y" >> .config
+          echo "CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_netcore_n60-pro=-dnsmasq-full -dnsmasq_full_dhcpv6 -dnsmasq_full_dnssec -dnsmasq_full_auth -dnsmasq_full_dhcp" >> .config
 
-          sed -i "s/CONFIG_PACKAGE_dnsmasq-full=y/CONFIG_PACKAGE_dnsmasq-full=n/" .config
+          sed -i 's/192.168.6.1/192.168.2.1/g' package/base-files/files/bin/config_generate
+          make defconfig
+
+          sed -i "/CONFIG_PACKAGE_dnsmasq-full=y/d" .config
+          sed -i "/CONFIG_PACKAGE_dnsmasq_full/d" .config
           echo "CONFIG_PACKAGE_dnsmasq=y" >> .config
-          echo "CONFIG_PACKAGE_dnsmasq-dhcpv6=y" >> .config
-
+          sed -i "/^CONFIG_PACKAGE_libcurl=/d" .config
+          sed -i "/^CONFIG_PACKAGE_libcurl-gnutls/d" .config
+          sed -i "/^CONFIG_PACKAGE_curl=/d" .config
+          sed -i "/^CONFIG_PACKAGE_bind-/d" .config
           cat >> .config << 'EOF'
-CONFIG_PACKAGE_luci-app-ddns=y
-CONFIG_PACKAGE_ddns-scripts=y
-CONFIG_PACKAGE_ddns-scripts-services=y
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_libcurl=y
 CONFIG_PACKAGE_bind-host=y
 CONFIG_PACKAGE_bind-libs=y
 CONFIG_PACKAGE_bind-dig=y
+CONFIG_PACKAGE_luci-app-ddns=y
+CONFIG_PACKAGE_ddns-scripts=y
+CONFIG_PACKAGE_ddns-scripts-services=y
 EOF
-
-          sed -i 's/192.168.6.1/192.168.2.1/g' package/base-files/files/bin/config_generate
-          make defconfig
 
       - name: Build firmware
         run: |
