@@ -1,0 +1,82 @@
+name: Build N60 Pro Firmware
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          swap-storage: true
+
+      - name: Install dependencies
+        run: |
+          sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          sudo pip3 install pyelftools
+
+      - name: Clone source
+        run: |
+          git clone -b openwrt-24.10-6.6 --single-branch --depth=1 \
+            https://github.com/padavanonly/immortalwrt-mt798x-6.6.git openwrt
+          cd openwrt
+          ln -sf ${{ github.workspace }}/.config .config
+          cp -f ${{ github.workspace }}/diy-part1.sh . 2>/dev/null || true
+          cp -f ${{ github.workspace }}/diy-part2.sh . 2>/dev/null || true
+
+      - name: Run diy-part1.sh
+        run: |
+          cd openwrt
+          [ -f diy-part1.sh ] && chmod +x diy-part1.sh && ./diy-part1.sh
+
+      - name: Update feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Run diy-part2.sh
+        run: |
+          cd openwrt
+          [ -f diy-part2.sh ] && chmod +x diy-part2.sh && ./diy-part2.sh
+
+      - name: Make defconfig
+        run: |
+          cd openwrt
+          make defconfig
+
+      - name: Build firmware
+        run: |
+          cd openwrt
+          make -j$(nproc) || make -j1 V=s
+        timeout-minutes: 360
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: N60Pro-firmware
+          path: |
+            openwrt/bin/targets/mediatek/filogic/*.itb
+            openwrt/bin/targets/mediatek/filogic/*.bin
+            openwrt/bin/targets/mediatek/filogic/*.fip
+            openwrt/bin/targets/mediatek/filogic/*.manifest
+          if-no-files-found: error
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: openwrt/logs/
