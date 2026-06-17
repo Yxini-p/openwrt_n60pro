@@ -60,10 +60,10 @@ jobs:
           cd openwrt
           [ -f diy-part2.sh ] && chmod +x diy-part2.sh && ./diy-part2.sh
 
-      - name: Make defconfig
+      - name: Configure
         run: |
           cd openwrt
-          make defconfig
+          make olddefconfig
 
       - name: Build firmware
         run: |
