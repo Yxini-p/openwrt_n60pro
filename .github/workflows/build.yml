@@ -31,22 +31,55 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: ccache-${{ runner.os }}-openwrt-base-${{ github.run_id }}
+          key: ccache-${{ runner.os }}-openwrt-${{ github.run_id }}
           restore-keys: |
-            ccache-${{ runner.os }}-openwrt-base-
+            ccache-${{ runner.os }}-openwrt-
 
       - name: Clone source
         run: |
           git clone -b openwrt-24.10-6.6 --single-branch --depth=1 \
             https://github.com/padavanonly/immortalwrt-mt798x-6.6.git openwrt
 
-      - name: Setup config
+      - name: Setup feeds
         run: |
-          cp -f .config openwrt/.config
           cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+
+      - name: Configure
+        run: |
+          cd openwrt
+          # Step 1: Base config with target
+          echo "CONFIG_TARGET_mediatek=y" > .config
+          echo "CONFIG_TARGET_mediatek_filogic=y" >> .config
           make defconfig
+
+          # Step 2: Add device and custom packages
+          cat >> .config << 'EOF'
+CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_netcore_n60-pro=y
+CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_netcore_n60-pro=""
+CONFIG_PACKAGE_kmod-mt_wifi=y
+CONFIG_PACKAGE_kmod-warp=y
+CONFIG_PACKAGE_kmod-mediatek_hnat=y
+CONFIG_PACKAGE_kmod-conninfra=y
+CONFIG_PACKAGE_wifi-scripts=y
+CONFIG_PACKAGE_wifi-dats=y
+CONFIG_PACKAGE_mtwifi-cfg=y
+CONFIG_PACKAGE_luci-app-mtwifi-cfg=y
+CONFIG_PACKAGE_luci-i18n-mtwifi-cfg-zh-cn=y
+CONFIG_PACKAGE_luci-app-turboacc-mtk=y
+CONFIG_PACKAGE_luci-i18n-turboacc-mtk-zh-cn=y
+CONFIG_PACKAGE_mii_mgr=y
+CONFIG_PACKAGE_mtkhqos_util=y
+CONFIG_PACKAGE_mtk-smp=y
+CONFIG_PACKAGE_luci-app-ddns=y
+CONFIG_PACKAGE_ddns-scripts=y
+CONFIG_PACKAGE_ddns-scripts-services=y
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_bind-host=y
+EOF
+
+          # Change default IP
           sed -i 's/192.168.6.1/192.168.2.1/g' package/base-files/files/bin/config_generate
 
       - name: Build firmware
@@ -56,7 +89,7 @@ jobs:
           export CCACHE_COMPRESS=1
           export CCACHE_MAXSIZE=2G
           export USE_CCACHE=1
-          make -j$(nproc) || make -j1 V=s
+          make -j$(nproc) 2>&1
         timeout-minutes: 360
 
       - name: Upload firmware
