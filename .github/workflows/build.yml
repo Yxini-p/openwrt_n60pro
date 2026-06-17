@@ -31,85 +31,29 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: ccache-${{ runner.os }}-openwrt-${{ github.run_id }}
+          key: ccache-${{ runner.os }}-openwrt-base-${{ github.run_id }}
           restore-keys: |
-            ccache-${{ runner.os }}-openwrt-
+            ccache-${{ runner.os }}-openwrt-base-
 
       - name: Clone source
         run: |
           git clone -b openwrt-24.10-6.6 --single-branch --depth=1 \
             https://github.com/padavanonly/immortalwrt-mt798x-6.6.git openwrt
 
-      - name: Copy config
+      - name: Setup config
         run: |
           cp -f .config openwrt/.config
-
-      - name: Update feeds
-        run: |
           cd openwrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-
-      - name: Generate base config
-        run: |
-          cd openwrt
           make defconfig
-
-      - name: Customize packages
-        run: |
-          cd openwrt
-          # Set default IP
           sed -i 's/192.168.6.1/192.168.2.1/g' package/base-files/files/bin/config_generate
-          # Remove bloat packages
-          for pkg in htop nano tcpdump luci-app-ssr-plus luci-app-passwall luci-app-vssr luci-app-wrtbwmon luci-app-eqos-mtk luci-app-rclone ksmbd autoksmbd miniupnpd openssh-keygen openssh-sftp-server; do
-            sed -i "s/CONFIG_PACKAGE_$pkg=y/# CONFIG_PACKAGE_$pkg is not set/" .config
-          done
-          # Add user packages (ddns, shellcrash ready)
-          echo "CONFIG_PACKAGE_luci-app-ddns=y" >> .config
-          echo "CONFIG_PACKAGE_ddns-scripts=y" >> .config
-          echo "CONFIG_PACKAGE_ddns-scripts-services=y" >> .config
-          echo "CONFIG_PACKAGE_curl=y" >> .config
-          echo "CONFIG_PACKAGE_bind-host=y" >> .config
-          # Enable 237 high-power WiFi (closed-source mt_wifi)
-          echo "CONFIG_PACKAGE_kmod-mt_wifi=y" >> .config
-          echo "CONFIG_PACKAGE_kmod-warp=y" >> .config
-          echo "CONFIG_PACKAGE_kmod-mediatek_hnat=y" >> .config
-          echo "CONFIG_PACKAGE_kmod-conninfra=y" >> .config
-          echo "CONFIG_PACKAGE_wifi-scripts=y" >> .config
-          echo "CONFIG_PACKAGE_wifi-dats=y" >> .config
-          echo "CONFIG_PACKAGE_mtwifi-cfg=y" >> .config
-          echo "CONFIG_PACKAGE_luci-app-mtwifi-cfg=y" >> .config
-          echo "CONFIG_PACKAGE_luci-i18n-mtwifi-cfg-zh-cn=y" >> .config
-          echo "CONFIG_PACKAGE_luci-app-turboacc-mtk=y" >> .config
-          echo "CONFIG_PACKAGE_luci-i18n-turboacc-mtk-zh-cn=y" >> .config
-          echo "CONFIG_PACKAGE_mii_mgr=y" >> .config
-          echo "CONFIG_PACKAGE_mtkhqos_util=y" >> .config
-          echo "CONFIG_PACKAGE_mtk-smp=y" >> .config
-          echo "CONFIG_PACKAGE_kmod-leds-ws2812b=y" >> .config
-          echo "CONFIG_PACKAGE_regs=y" >> .config
-          echo "CONFIG_PACKAGE_switch=y" >> .config
-          echo "CONFIG_PACKAGE_ethtool=y" >> .config
-          echo "CONFIG_PACKAGE_iw=y" >> .config
-          echo "CONFIG_PACKAGE_iwinfo=y" >> .config
-          echo "CONFIG_PACKAGE_ip-bridge=y" >> .config
-          echo "CONFIG_PACKAGE_ipset=y" >> .config
-          echo "CONFIG_PACKAGE_ip6tables-extra=y" >> .config
-          echo "CONFIG_PACKAGE_ip6tables-nft=y" >> .config
-          # Disable open-source mt7915e WiFi to avoid conflict
-          sed -i "s/CONFIG_PACKAGE_kmod-mt7915e=y/# CONFIG_PACKAGE_kmod-mt7915e is not set/" .config
-          sed -i "s/CONFIG_PACKAGE_kmod-mt7915-firmware=y/# CONFIG_PACKAGE_kmod-mt7915-firmware is not set/" .config
-
-      - name: Finalize config
-        run: |
-          cd openwrt
-          make olddefconfig
 
       - name: Build firmware
         run: |
           cd openwrt
           export CCACHE_DIR=~/.ccache
           export CCACHE_COMPRESS=1
-          export CCACHE_COMPRESSLEVEL=3
           export CCACHE_MAXSIZE=2G
           export USE_CCACHE=1
           make -j$(nproc) || make -j1 V=s
